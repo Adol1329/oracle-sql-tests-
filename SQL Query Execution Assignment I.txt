@@ -1,0 +1,223 @@
+1. Create Tables (DDL)
+--------------------------------------------------------
+CREATE TABLE categories (
+    id INT PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+CREATE TABLE books (
+    book_id INT PRIMARY KEY,
+    title VARCHAR(255),
+    category_id INT,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE authors (
+    author_id INT PRIMARY KEY,
+    author_name VARCHAR(100)
+);
+ CREATE TABLE book_author (
+    book_id INT,
+    author_id INT,
+    PRIMARY KEY (book_id, author_id),
+    FOREIGN KEY (book_id) REFERENCES books(book_id),
+    FOREIGN KEY (author_id) REFERENCES authors(author_id)
+);
+CREATE TABLE publishers (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE book_copy (
+    id INT PRIMARY KEY,
+    year_published INT,
+    book_id INT,
+    publisher_id INT,
+    FOREIGN KEY (book_id) REFERENCES books(book_id),
+    FOREIGN KEY (publisher_id) REFERENCES publishers(id)
+);
+
+CREATE TABLE patron_accounts (
+    card_number INT PRIMARY KEY,
+    first_name VARCHAR(100),
+    surname VARCHAR(100),
+    email VARCHAR(100),
+    status ENUM('active', 'blocked')  -- MySQL syntax; use VARCHAR in others
+);
+
+CREATE TABLE checkout (
+    id INT PRIMARY KEY,
+    start_time DATETIME,
+    end_time DATETIME,
+    book_copy_id INT,
+    patron_account_id INT,
+    is_returned ENUM('YES', 'NO'),  -- MySQL syntax; use VARCHAR in others
+    FOREIGN KEY (book_copy_id) REFERENCES book_copy(id),
+    FOREIGN KEY (patron_account_id) REFERENCES patron_accounts(card_number)
+);
+
+CREATE TABLE hold (
+    id INT PRIMARY KEY,
+    start_time DATETIME,
+    end_time DATETIME,
+    book_copy_id INT,
+    patron_account_id INT,
+    FOREIGN KEY (book_copy_id) REFERENCES book_copy(id),
+    FOREIGN KEY (patron_account_id) REFERENCES patron_accounts(card_number)
+);
+
+CREATE TABLE waitlist (
+    patron_id INT,
+    book_id INT,
+    PRIMARY KEY (patron_id, book_id),
+    FOREIGN KEY (patron_id) REFERENCES patron_accounts(card_number),
+    FOREIGN KEY (book_id) REFERENCES books(book_id)
+);
+
+CREATE TABLE notifications (
+    id INT PRIMARY KEY,
+    sent_at DATETIME,
+    type VARCHAR(50),
+    patron_account_id INT,
+    FOREIGN KEY (patron_account_id) REFERENCES patron_accounts(card_number)
+);
+
+CREATE TABLE book_details (
+    detail_id INT PRIMARY KEY,
+    book_id INT UNIQUE,
+    long_description TEXT,
+    isbn VARCHAR(20),
+    FOREIGN KEY (book_id) REFERENCES books(book_id)
+);
+
+
+2. Insert Data (DML)
+---------------------------------------------------
+
+--Inserting--
+-- Inserting categories
+INSERT INTO categories (id, name) VALUES (1, 'Fiction');
+INSERT INTO categories (id, name) VALUES (2, 'Non-Fiction');
+
+-- Inserting books
+INSERT INTO books (book_id, title, category_id) VALUES (1, 'The Great Gatsby', 1);
+INSERT INTO books (book_id, title, category_id) VALUES (2, 'Sapiens', 2);
+
+-- Inserting authors
+INSERT INTO authors (author_id, author_name) VALUES (1, 'F. Scott Fitzgerald');
+INSERT INTO authors (author_id, author_name) VALUES (2, 'Yuval Noah Harari');
+
+-- Inserting book_author relationships
+INSERT INTO book_author (book_id, author_id) VALUES (1, 1);
+INSERT INTO book_author (book_id, author_id) VALUES (2, 2);
+
+-- Inserting publishers
+INSERT INTO publishers (id, name) VALUES (1, 'Scribner');
+INSERT INTO publishers (id, name) VALUES (2, 'HarperCollins');
+
+-- Inserting book copies
+INSERT INTO book_copy (id, year_published, book_id, publisher_id) VALUES (1, 1925, 1, 1);
+INSERT INTO book_copy (id, year_published, book_id, publisher_id) VALUES (2, 2011, 2, 2);
+
+-- Inserting patron accounts
+INSERT INTO patron_accounts (card_number, first_name, surname, email, status) VALUES (1, 'John', 'Doe', 'john.doe@example.com', 'active');
+INSERT INTO patron_accounts (card_number, first_name, surname, email, status) VALUES (2, 'Jane', 'Smith', 'jane.smith@example.com', 'active');
+
+-- Inserting checkouts
+INSERT INTO checkout (id, start_time, end_time, book_copy_id, patron_account_id, is_returned) VALUES (1, CURRENT_TIMESTAMP, NULL, 1, 1, 'NO');
+
+-- Inserting holds
+INSERT INTO hold (id, start_time, end_time, book_copy_id, patron_account_id) VALUES (1, CURRENT_TIMESTAMP, NULL, 1, 2);
+
+-- Inserting waitlist
+INSERT INTO waitlist (patron_id, book_id) VALUES (1, 2);
+
+-- Inserting notifications
+INSERT INTO notifications (id, sent_at, type, patron_account_id) VALUES (1, CURRENT_TIMESTAMP, 'Hold Available', 2);
+
+--
+
+ 3.Update Data (DML)
+------------------------------------------------------
+-- Update a book's title
+UPDATE books SET title = 'The Great Gatsby - Revised Edition' WHERE book_id = 1;
+
+-- Update patron account status
+UPDATE patron_accounts SET status = 'blocked' WHERE card_number = 1;
+
+4. Delete Data (DML)
+----------------------------------------------------
+
+-- Delete a book copy
+DELETE FROM book_copy WHERE id = 2;
+
+-- Delete an author
+DELETE FROM authors WHERE author_id = 2;
+
+5. Perform Joins
+--------------------------------------
+-- Retrieve books along with their categories
+SELECT b.title, c.name AS category
+FROM books b
+JOIN categories c ON b.category_id = c.id;
+
+-- Retrieve books with their authors
+SELECT b.title, a.author_name
+FROM books b
+JOIN book_author ba ON b.book_id = ba.book_id
+JOIN authors a ON ba.author_id = a.author_id;
+
+6. Basic SQL Commands (SELECT, INSERT, UPDATE, DELETE)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- SELECT
+SELECT * FROM books;
+
+-- INSERT
+INSERT INTO books (book_id, title, category_id) VALUES (3, 'Educated', 2);
+
+-- UPDATE
+UPDATE books SET category_id = 1 WHERE book_id = 3;
+
+-- DELETE
+DELETE FROM books WHERE book_id = 3;
+
+7. Perform Subqueries
+-------------------------------------------------
+-- Find all books that are checked out by a patron
+SELECT b.title
+FROM books b
+WHERE b.book_id IN (SELECT book_copy_id FROM checkout WHERE patron_account_id = 1);
+
+-- Find all authors who have books in a specific category
+SELECT a.author_name
+FROM authors a
+WHERE a.author_id IN (
+    SELECT ba.author_id 
+    FROM book_author ba 
+    JOIN books b ON ba.book_id = b.book_id 
+    WHERE b.category_id = 1
+);
+
+8.DCL (Data Control Language)
+-----------------------------------------------------------------------------
+-- Grant permission to a user
+GRANT SELECT, INSERT ON books TO adolphe;
+
+-- Revoke permission from a user
+REVOKE INSERT ON books FROM adolphe;
+
+9.TCL (Transaction Control Language)
+----------------------------------------------------------------------------------------------
+-- Start a transaction 
+START TRANSACTION;
+
+-- Commit the transaction
+COMMIT;
+
+-- Rollback the transaction in case of error
+ROLLBACK;
+
+Summary
+These commands give you a comprehensive guide to managing your library database, from creating tables to executing complex queries. 
+Be sure to adapt the SQL syntax based on the specific database system you are using, as there may be slight variations.
+
